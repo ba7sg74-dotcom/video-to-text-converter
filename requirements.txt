@@ -1,4 +1,7 @@
-Flask==2.3.2
-flask-cors==4.0.0
-yt-dlp==2023.10.13
-openai-whisper==20231117
+flask
+flask-cors
+yt-dlp
+openai-whisper
+setuptools
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch

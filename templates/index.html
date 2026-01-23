@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محول اليوتيوب إلى نص</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { background-color: #ff0000; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
+        button:disabled { background-color: #ccc; }
+        #result { margin-top: 20px; text-align: right; white-space: pre-wrap; background: #eee; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto; }
+        .loading { color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>تحويل فيديو يوتيوب إلى نص</h2>
+        <input type="text" id="videoUrl" placeholder="ضع رابط الفيديو هنا (YouTube URL)">
+        <button id="convertBtn" onclick="convertVideo()">تحويل الآن</button>
+        <div id="status" class="loading"></div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function convertVideo() {
+            const url = document.getElementById('videoUrl').value;
+            const btn = document.getElementById('convertBtn');
+            const status = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+
+            if (!url) { alert("من فضلك ضع رابطاً أولاً"); return; }
+
+            btn.disabled = true;
+            status.innerText = "جاري التحميل والمعالجة... قد يستغرق الأمر دقيقة";
+            resultDiv.innerText = "";
+
+            try {
+                const response = await fetch('/transcribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+                const data = await response.json();
+                
+                if (data.text) {
+                    resultDiv.innerText = data.text;
+                    status.innerText = "تم التحويل بنجاح!";
+                } else {
+                    status.innerText = "خطأ: " + (data.error || "حدث خطأ غير معروف");
+                }
+            } catch (error) {
+                status.innerText = "فشل الاتصال بالخادم";
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
