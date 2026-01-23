@@ -1,0 +1,7 @@
+echo "__pycache__/" > .gitignore
+echo "*.pyc" >> .gitignore
+echo ".env" >> .gitignore
+echo "venv/" >> .gitignore
+echo "*.mp3" >> .gitignore
+echo "*.webm" >> .gitignore
+echo "*.m4a" >> .gitignore
