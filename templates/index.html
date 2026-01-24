@@ -3,58 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محول اليوتيوب إلى نص</title>
+    <title>محول يوتيوب إلى نص</title>
     <style>
-        body { font-family: sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        button { background-color: #ff0000; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
-        button:disabled { background-color: #ccc; }
-        #result { margin-top: 20px; text-align: right; white-space: pre-wrap; background: #eee; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto; }
-        .loading { color: #666; font-style: italic; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        input[type="url"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+        .error {
+            color: #dc3545;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        .button-group button {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>تحويل فيديو يوتيوب إلى نص</h2>
-        <input type="text" id="videoUrl" placeholder="ضع رابط الفيديو هنا (YouTube URL)">
-        <button id="convertBtn" onclick="convertVideo()">تحويل الآن</button>
-        <div id="status" class="loading"></div>
-        <div id="result"></div>
+        <h1>📹 محول فيديو يوتيوب إلى نص</h1>
+        
+        <div>
+            <label for="url">رابط الفيديو:</label>
+            <input type="url" id="url" placeholder="https://www.youtube.com/watch?v=..." required>
+        </div>
+        
+        <div class="button-group">
+            <button id="convertBtn" onclick="processVideo()">
+                🎤 تحويل إلى نص
+            </button>
+            <button id="downloadAudioBtn" onclick="downloadAudio()">
+                ⬇️ تحميل الصوت فقط
+            </button>
+        </div>
+        
+        <div id="loading" class="loading">
+            ⏳ جاري المعالجة... هذا قد يستغرق بضع دقائق
+        </div>
+        
+        <div id="error" class="error"></div>
+        
+        <div id="result" class="result">
+            <h3 id="videoTitle"></h3>
+            <div id="transcript"></div>
+            <button onclick="copyText()" style="margin-top: 10px;">
+                📋 نسخ النص
+            </button>
+        </div>
     </div>
 
     <script>
-        async function convertVideo() {
-            const url = document.getElementById('videoUrl').value;
-            const btn = document.getElementById('convertBtn');
-            const status = document.getElementById('status');
-            const resultDiv = document.getElementById('result');
-
-            if (!url) { alert("من فضلك ضع رابطاً أولاً"); return; }
-
-            btn.disabled = true;
-            status.innerText = "جاري التحميل والمعالجة... قد يستغرق الأمر دقيقة";
-            resultDiv.innerText = "";
-
+        const API_URL = window.location.origin; // سيستخدم نفس النطاق
+        
+        async function processVideo() {
+            const url = document.getElementById('url').value;
+            if (!url) {
+                showError('يرجى إدخال رابط الفيديو');
+                return;
+            }
+            
+            showLoading(true);
+            hideError();
+            hideResult();
+            
             try {
-                const response = await fetch('/transcribe', {
+                const response = await fetch(`${API_URL}/process`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify({ url: url })
                 });
+                
                 const data = await response.json();
                 
-                if (data.text) {
-                    resultDiv.innerText = data.text;
-                    status.innerText = "تم التحويل بنجاح!";
+                if (response.ok) {
+                    showResult(data.title, data.transcript);
                 } else {
-                    status.innerText = "خطأ: " + (data.error || "حدث خطأ غير معروف");
+                    showError(data.error || 'حدث خطأ أثناء المعالجة');
                 }
             } catch (error) {
-                status.innerText = "فشل الاتصال بالخادم";
+                showError('فشل الاتصال بالخادم: ' + error.message);
             } finally {
-                btn.disabled = false;
+                showLoading(false);
             }
+        }
+        
+        async function downloadAudio() {
+            const url = document.getElementById('url').value;
+            if (!url) {
+                showError('يرجى إدخال رابط الفيديو');
+                return;
+            }
+            
+            showLoading(true);
+            hideError();
+            
+            try {
+                const response = await fetch(`${API_URL}/download-audio`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = 'audio.mp3';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(downloadUrl);
+                } else {
+                    const data = await response.json();
+                    showError(data.error || 'حدث خطأ أثناء التحميل');
+                }
+            } catch (error) {
+                showError('فشل الاتصال بالخادم: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        function showResult(title, transcript) {
+            document.getElementById('videoTitle').textContent = title;
+            document.getElementById('transcript').textContent = transcript;
+            document.getElementById('result').style.display = 'block';
+        }
+        
+        function hideResult() {
+            document.getElementById('result').style.display = 'none';
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('convertBtn').disabled = show;
+            document.getElementById('downloadAudioBtn').disabled = show;
+        }
+        
+        function copyText() {
+            const text = document.getElementById('transcript').textContent;
+            navigator.clipboard.writeText(text)
+                .then(() => alert('تم نسخ النص إلى الحافظة!'))
+                .catch(err => showError('فشل نسخ النص: ' + err));
         }
     </script>
 </body>
